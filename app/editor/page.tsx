@@ -33,6 +33,7 @@ export default function EditorPage() {
     play,
     pause,
     toggle,
+    seek,
     seekByPercent,
     skipForward,
     skipBackward,
@@ -90,7 +91,6 @@ export default function EditorPage() {
       const url = URL.createObjectURL(recordedBlob);
       const a = document.createElement("a");
       a.href = url;
-      // Use the recording title for the filename, sanitized for file system
       const sanitizedTitle = recordingTitle
         .replace(/[^a-zA-Z0-9-_ ]/g, "")
         .replace(/\s+/g, "-");
@@ -145,6 +145,34 @@ export default function EditorPage() {
     return { padding: `${padding}px` };
   };
 
+  // Enforce trim bounds during playback
+  useEffect(() => {
+    if (isPlaying && currentTime >= trimEnd) {
+      pause();
+      if (videoRef.current) {
+        videoRef.current.currentTime = trimStart;
+      }
+    }
+  }, [currentTime, trimEnd, trimStart, isPlaying, pause, videoRef]);
+
+  // Trim-aware playback handlers
+  const handlePlayProxy = () => {
+    if (currentTime >= trimEnd || currentTime < trimStart) {
+      seek(trimStart);
+    }
+    play();
+  };
+
+  const handleSkipBackwardProxy = () => {
+    const newTime = Math.max(trimStart, currentTime - 5);
+    seek(newTime);
+  };
+
+  const handleSkipForwardProxy = () => {
+    const newTime = Math.min(trimEnd, currentTime + 5);
+    seek(newTime);
+  };
+
   if (!recordedBlob) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -190,62 +218,6 @@ export default function EditorPage() {
 
             {/* Webcam Overlay */}
             <WebcamOverlay stream={webcamStream} isActive={webcamActive} />
-          </div>
-  // Enforce trim bounds during playback
-  useEffect(() => {
-    if (isPlaying && currentTime >= trimEnd) {
-      pause();
-      if (videoRef.current) {
-        videoRef.current.currentTime = trimStart;
-      }
-    }
-  }, [currentTime, trimEnd, trimStart, isPlaying, pause, videoRef]);
-
-  const handlePlayProxy = () => {
-    if (currentTime >= trimEnd || currentTime < trimStart) {
-      seek(trimStart);
-    }
-    play();
-  };
-
-  const handleSkipBackwardProxy = () => {
-    const newTime = Math.max(trimStart, currentTime - 5);
-    seek(newTime);
-  };
-
-  const handleSkipForwardProxy = () => {
-    const newTime = Math.min(trimEnd, currentTime + 5);
-    seek(newTime);
-  };
-
-  return (
-    <div className="flex h-screen bg-background text-foreground">
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <HeaderBar
-          title={recordingTitle}
-          onTitleChange={setRecordingTitle}
-          onExport={handleExport}
-          isExporting={false}
-        />
-
-        {/* Video Preview Area */}
-        <main className="flex-1 flex items-center justify-center p-8 overflow-hidden">
-          <div
-            className="relative w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
-            style={{
-              ...getBackgroundStyle(),
-              aspectRatio:
-                aspectRatio === "auto"
-                  ? "auto"
-                  : (ASPECT_RATIOS.find((r) => r.value === aspectRatio)?.ratio?.toString() ?? "auto"),
-            }}
-          >
-            <VideoPreview
-              videoRef={videoRef}
-              cropArea={cropArea}
-            />
           </div>
         </main>
 

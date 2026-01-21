@@ -64,7 +64,6 @@ export function Sidebar({
           ))}
         </div>
 
-        {/* Tab Content */}
         {activeTab === "wallpaper" && (
           <WallpaperPicker
             selected={background?.id ?? null}
