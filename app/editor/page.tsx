@@ -12,8 +12,9 @@ import {
   Timeline,
   useVideoPlayer,
   CropModal,
+  ASPECT_RATIOS,
 } from "@/features/editor";
-import type { CropArea } from "@/features/editor";
+import type { CropArea, AspectRatioOption } from "@/features/editor";
 import { Sidebar, PRESET_GRADIENTS } from "@/features/customization";
 
 export default function EditorPage() {
@@ -51,6 +52,9 @@ export default function EditorPage() {
   // Crop state
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [cropArea, setCropArea] = useState<CropArea | null>(null);
+
+  // Aspect ratio state
+  const [aspectRatio, setAspectRatio] = useState<AspectRatioOption>("16:9");
 
   // Redirect to landing if no recorded blob
   useEffect(() => {
@@ -137,8 +141,16 @@ export default function EditorPage() {
         {/* Video Preview Area */}
         <main className="flex-1 flex items-center justify-center p-8 overflow-hidden">
           <div
-            className="relative w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl"
-            style={getBackgroundStyle()}
+            className="relative w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
+            style={{
+              ...getBackgroundStyle(),
+              aspectRatio:
+                aspectRatio === "auto"
+                  ? "auto"
+                  : (ASPECT_RATIOS.find(
+                      (r) => r.value === aspectRatio,
+                    )?.ratio?.toString() ?? "auto"),
+            }}
           >
             {/* Video Preview */}
             <VideoPreview
@@ -159,10 +171,12 @@ export default function EditorPage() {
           isPlaying={isPlaying}
           currentTime={formattedCurrentTime}
           duration={formattedDuration}
+          aspectRatio={aspectRatio}
           onPlay={play}
           onPause={pause}
           onSkipForward={() => skipForward(5)}
           onSkipBackward={() => skipBackward(5)}
+          onAspectRatioChange={setAspectRatio}
           onNewRecording={handleNewRecording}
           onCropClick={() => setCropModalOpen(true)}
         />

@@ -17,9 +17,9 @@ export function Timeline({
 }: TimelineProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
 
-  // Generate a simple visual waveform pattern
+  // Generate a simple visual waveform pattern - always generate 120 bars
   const waveformBars = useMemo(() => {
-    const bars = [];
+    const bars: number[] = [];
     const barCount = 120;
     for (let i = 0; i < barCount; i++) {
       const height = Math.sin(i * 0.3) * 20 + Math.sin(i * 0.7) * 15 + 35;
@@ -47,7 +47,7 @@ export function Timeline({
       <div
         ref={timelineRef}
         onClick={handleClick}
-        className="relative h-16 bg-muted/50 rounded-lg overflow-hidden cursor-pointer"
+        className="relative h-16 min-h-[64px] bg-muted/50 rounded-lg overflow-hidden cursor-pointer"
       >
         {/* Played portion overlay - matches playhead exactly */}
         <div
@@ -55,28 +55,30 @@ export function Timeline({
           style={{ width: `${progressPercent}%` }}
         />
 
-        {/* Waveform bars - using evenly spaced positioning */}
+        {/* Waveform bars - always visible */}
         <div className="absolute inset-0 flex items-end px-1 z-10">
           {waveformBars.map((height, index) => {
-            // Calculate bar center position as percentage
             const barCenterPercent =
               ((index + 0.5) / waveformBars.length) * 100;
             const isPlayed = barCenterPercent <= progressPercent;
             return (
-              <div key={index} className="flex-1 flex justify-center">
+              <div key={index} className="flex-1 flex justify-center pb-1">
                 <div
-                  className={`
-                    w-1 rounded-full
-                    ${isRecording ? "bg-amber-500/80" : isPlayed ? "bg-primary" : "bg-muted-foreground/30"}
-                  `}
-                  style={{ height: `${height}%` }}
+                  className={`w-1 rounded-full ${
+                    isRecording
+                      ? "bg-amber-500/80"
+                      : isPlayed
+                        ? "bg-primary"
+                        : "bg-muted-foreground/40"
+                  }`}
+                  style={{ height: `${height}%`, minHeight: "4px" }}
                 />
               </div>
             );
           })}
         </div>
 
-        {/* Playhead indicator - no transition for real-time sync */}
+        {/* Playhead indicator - show when duration > 0 */}
         {!isRecording && duration > 0 && (
           <div
             className="absolute top-0 bottom-0 w-1 bg-primary z-20 rounded-full shadow-lg"
