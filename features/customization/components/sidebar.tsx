@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { WallpaperPicker } from "./wallpaper-picker";
+import { ImagePicker } from "./image-picker";
 import { PaddingControl } from "./padding-control";
 import type { BackgroundType } from "../constants";
 
 interface SidebarProps {
   background: { colors: string[]; id: string } | null;
+  backgroundImage: string | null;
   onBackgroundChange: (id: string, colors: readonly string[]) => void;
+  onImageChange: (path: string) => void;
   padding: number;
   onPaddingChange: (value: number) => void;
   blur: number;
@@ -23,7 +26,9 @@ const TABS: { id: BackgroundType; label: string }[] = [
 
 export function Sidebar({
   background,
+  backgroundImage,
   onBackgroundChange,
+  onImageChange,
   padding,
   onPaddingChange,
   blur,
@@ -82,9 +87,7 @@ export function Sidebar({
         )}
 
         {activeTab === "image" && (
-          <div className="text-sm text-muted-foreground py-4 text-center">
-            Custom images coming soon
-          </div>
+          <ImagePicker selected={backgroundImage} onSelect={onImageChange} />
         )}
       </div>
 

@@ -49,30 +49,34 @@ export function Timeline({
         onClick={handleClick}
         className="relative h-16 bg-muted/50 rounded-lg overflow-hidden cursor-pointer"
       >
-        {/* Played portion overlay */}
+        {/* Played portion overlay - matches playhead exactly */}
         <div
           className="absolute top-0 bottom-0 left-0 bg-primary/20 z-0"
           style={{ width: `${progressPercent}%` }}
         />
 
-        <div className="absolute inset-0 flex items-end justify-around px-1 z-10">
+        {/* Waveform bars - using evenly spaced positioning */}
+        <div className="absolute inset-0 flex items-end px-1 z-10">
           {waveformBars.map((height, index) => {
-            const barPercent = (index / waveformBars.length) * 100;
-            const isPlayed = barPercent <= progressPercent;
+            // Calculate bar center position as percentage
+            const barCenterPercent =
+              ((index + 0.5) / waveformBars.length) * 100;
+            const isPlayed = barCenterPercent <= progressPercent;
             return (
-              <div
-                key={index}
-                className={`
-                  w-1 rounded-full transition-colors
-                  ${isRecording ? "bg-amber-500/80" : isPlayed ? "bg-primary" : "bg-muted-foreground/30"}
-                `}
-                style={{ height: `${height}%` }}
-              />
+              <div key={index} className="flex-1 flex justify-center">
+                <div
+                  className={`
+                    w-1 rounded-full
+                    ${isRecording ? "bg-amber-500/80" : isPlayed ? "bg-primary" : "bg-muted-foreground/30"}
+                  `}
+                  style={{ height: `${height}%` }}
+                />
+              </div>
             );
           })}
         </div>
 
-        {/* Playhead indicator */}
+        {/* Playhead indicator - no transition for real-time sync */}
         {!isRecording && duration > 0 && (
           <div
             className="absolute top-0 bottom-0 w-1 bg-primary z-20 rounded-full shadow-lg"

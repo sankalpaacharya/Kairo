@@ -2,11 +2,19 @@
 
 import { useMemo, useEffect, type RefObject } from "react";
 
+export interface CropArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface VideoPreviewProps {
   recordedBlob: Blob | null;
   isRecording: boolean;
   videoRef?: RefObject<HTMLVideoElement | null>;
   className?: string;
+  cropArea?: CropArea | null;
 }
 
 export function VideoPreview({
@@ -14,6 +22,7 @@ export function VideoPreview({
   isRecording,
   videoRef,
   className = "",
+  cropArea,
 }: VideoPreviewProps) {
   const videoUrl = useMemo(() => {
     if (recordedBlob) {
@@ -29,6 +38,29 @@ export function VideoPreview({
       }
     };
   }, [videoUrl]);
+
+  // Calculate crop styles using CSS clip-path
+  const getCropStyles = (): React.CSSProperties => {
+    if (
+      !cropArea ||
+      (cropArea.x === 0 &&
+        cropArea.y === 0 &&
+        cropArea.width === 100 &&
+        cropArea.height === 100)
+    ) {
+      return {};
+    }
+
+    // Use inset clip-path: inset(top right bottom left)
+    const top = cropArea.y;
+    const left = cropArea.x;
+    const bottom = 100 - (cropArea.y + cropArea.height);
+    const right = 100 - (cropArea.x + cropArea.width);
+
+    return {
+      clipPath: `inset(${top}% ${right}% ${bottom}% ${left}%)`,
+    };
+  };
 
   if (!recordedBlob && !isRecording) {
     return (
@@ -68,6 +100,7 @@ export function VideoPreview({
         ref={videoRef}
         src={videoUrl ?? undefined}
         className="w-full aspect-video bg-black"
+        style={getCropStyles()}
       />
     </div>
   );

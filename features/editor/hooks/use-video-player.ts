@@ -26,36 +26,69 @@ function formatTime(seconds: number): string {
 
 export function useVideoPlayer(): UseVideoPlayerReturn {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  // Use requestAnimationFrame for smooth 60fps updates
+  const updateTime = useCallback(() => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+    }
+    animationFrameRef.current = requestAnimationFrame(updateTime);
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const handleTimeUpdate = () => setCurrentTime(video.currentTime);
     const handleDurationChange = () => setDuration(video.duration || 0);
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
+    const handlePlay = () => {
+      setIsPlaying(true);
+      // Start animation loop on play
+      animationFrameRef.current = requestAnimationFrame(updateTime);
+    };
+    const handlePause = () => {
+      setIsPlaying(false);
+      // Stop animation loop on pause
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      // Update final time
+      setCurrentTime(video.currentTime);
+    };
+    const handleEnded = () => {
+      setIsPlaying(false);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+    const handleSeeked = () => {
+      setCurrentTime(video.currentTime);
+    };
 
-    video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("durationchange", handleDurationChange);
     video.addEventListener("loadedmetadata", handleDurationChange);
     video.addEventListener("play", handlePlay);
     video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
+    video.addEventListener("seeked", handleSeeked);
 
     return () => {
-      video.removeEventListener("timeupdate", handleTimeUpdate);
       video.removeEventListener("durationchange", handleDurationChange);
       video.removeEventListener("loadedmetadata", handleDurationChange);
       video.removeEventListener("play", handlePlay);
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("seeked", handleSeeked);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
-  }, []);
+  }, [updateTime]);
 
   const play = useCallback(() => {
     videoRef.current?.play();
@@ -73,26 +106,35 @@ export function useVideoPlayer(): UseVideoPlayerReturn {
     }
   }, [isPlaying, play, pause]);
 
-  const seek = useCallback((time: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = Math.max(0, Math.min(time, duration));
-    }
-  }, [duration]);
+  const seek = useCallback(
+    (time: number) => {
+      if (videoRef.current) {
+        videoRef.current.currentTime = Math.max(0, Math.min(time, duration));
+      }
+    },
+    [duration]
+  );
 
-  const seekByPercent = useCallback((percent: number) => {
-    if (videoRef.current && duration > 0) {
-      videoRef.current.currentTime = (percent / 100) * duration;
-    }
-  }, [duration]);
+  const seekByPercent = useCallback(
+    (percent: number) => {
+      if (videoRef.current && duration > 0) {
+        videoRef.current.currentTime = (percent / 100) * duration;
+      }
+    },
+    [duration]
+  );
 
-  const skipForward = useCallback((seconds = 5) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = Math.min(
-        videoRef.current.currentTime + seconds,
-        duration
-      );
-    }
-  }, [duration]);
+  const skipForward = useCallback(
+    (seconds = 5) => {
+      if (videoRef.current) {
+        videoRef.current.currentTime = Math.min(
+          videoRef.current.currentTime + seconds,
+          duration
+        );
+      }
+    },
+    [duration]
+  );
 
   const skipBackward = useCallback((seconds = 5) => {
     if (videoRef.current) {
@@ -119,3 +161,4 @@ export function useVideoPlayer(): UseVideoPlayerReturn {
     skipBackward,
   };
 }
+

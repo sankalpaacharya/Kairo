@@ -19,6 +19,7 @@ interface BottomToolbarProps {
   onSkipForward: () => void;
   onSkipBackward: () => void;
   onNewRecording?: () => void;
+  onCropClick?: () => void;
 }
 
 export function BottomToolbar({
@@ -30,6 +31,7 @@ export function BottomToolbar({
   onSkipForward,
   onSkipBackward,
   onNewRecording,
+  onCropClick,
 }: BottomToolbarProps) {
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-card/50">
@@ -39,7 +41,7 @@ export function BottomToolbar({
           <span className="text-xs">Wide</span>
           <span className="text-xs text-muted-foreground">16:9</span>
         </Button>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={onCropClick}>
           Crop
         </Button>
       </div>
