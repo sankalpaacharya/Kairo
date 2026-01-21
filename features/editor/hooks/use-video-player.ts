@@ -19,6 +19,10 @@ interface UseVideoPlayerReturn {
 }
 
 function formatTime(seconds: number): string {
+  // Handle invalid values
+  if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) {
+    return "00:00";
+  }
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
@@ -43,7 +47,12 @@ export function useVideoPlayer(): UseVideoPlayerReturn {
     const video = videoRef.current;
     if (!video) return;
 
-    const handleDurationChange = () => setDuration(video.duration || 0);
+    const handleDurationChange = () => {
+      const dur = video.duration;
+      if (isFinite(dur) && !isNaN(dur) && dur > 0) {
+        setDuration(dur);
+      }
+    };
     const handlePlay = () => {
       setIsPlaying(true);
       // Start animation loop on play
@@ -69,17 +78,31 @@ export function useVideoPlayer(): UseVideoPlayerReturn {
     const handleSeeked = () => {
       setCurrentTime(video.currentTime);
     };
+    const handleLoadedData = () => {
+      const dur = video.duration;
+      if (isFinite(dur) && !isNaN(dur) && dur > 0) {
+        setDuration(dur);
+      }
+      setCurrentTime(video.currentTime);
+    };
 
     video.addEventListener("durationchange", handleDurationChange);
     video.addEventListener("loadedmetadata", handleDurationChange);
+    video.addEventListener("loadeddata", handleLoadedData);
     video.addEventListener("play", handlePlay);
     video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
     video.addEventListener("seeked", handleSeeked);
 
+    // Check if duration is already available
+    if (video.duration && isFinite(video.duration)) {
+      setDuration(video.duration);
+    }
+
     return () => {
       video.removeEventListener("durationchange", handleDurationChange);
       video.removeEventListener("loadedmetadata", handleDurationChange);
+      video.removeEventListener("loadeddata", handleLoadedData);
       video.removeEventListener("play", handlePlay);
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
