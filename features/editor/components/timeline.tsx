@@ -1,12 +1,18 @@
 "use client";
 
 import { useMemo, useRef, useCallback } from "react";
+import { TrimHandles } from "./trim-handles";
 
 interface TimelineProps {
   duration: number;
   currentTime: number;
   isRecording?: boolean;
   onSeek?: (percent: number) => void;
+  // Trim props (optional - only show trim handles when these are provided)
+  trimStart?: number;
+  trimEnd?: number;
+  onTrimStartChange?: (time: number) => void;
+  onTrimEndChange?: (time: number) => void;
 }
 
 export function Timeline({
@@ -14,8 +20,19 @@ export function Timeline({
   currentTime,
   isRecording = false,
   onSeek,
+  trimStart,
+  trimEnd,
+  onTrimStartChange,
+  onTrimEndChange,
 }: TimelineProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
+
+  // Check if trim mode is enabled
+  const isTrimEnabled =
+    trimStart !== undefined &&
+    trimEnd !== undefined &&
+    onTrimStartChange !== undefined &&
+    onTrimEndChange !== undefined;
 
   // Generate a simple visual waveform pattern - always generate 120 bars
   const waveformBars = useMemo(() => {
@@ -78,10 +95,21 @@ export function Timeline({
           })}
         </div>
 
+        {/* Trim handles - only shown when trim is enabled */}
+        {isTrimEnabled && (
+          <TrimHandles
+            duration={duration}
+            trimStart={trimStart}
+            trimEnd={trimEnd}
+            onTrimStartChange={onTrimStartChange}
+            onTrimEndChange={onTrimEndChange}
+          />
+        )}
+
         {/* Playhead indicator - show when duration > 0 */}
         {!isRecording && duration > 0 && (
           <div
-            className="absolute top-0 bottom-0 w-1 bg-primary z-20 rounded-full shadow-lg"
+            className="absolute top-0 bottom-0 w-1 bg-primary z-50 rounded-full shadow-lg"
             style={{
               left: `${progressPercent}%`,
               transform: "translateX(-50%)",
@@ -97,8 +125,21 @@ export function Timeline({
         <div className="bg-muted rounded-full px-3 py-1 flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Clip</span>
         </div>
-        <div className="text-xs text-muted-foreground">7x @ 1x</div>
+        {isTrimEnabled && trimStart !== undefined && trimEnd !== undefined && (
+          <div className="text-xs text-muted-foreground">
+            {formatTime(trimStart)} - {formatTime(trimEnd)}
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+function formatTime(seconds: number): string {
+  if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) {
+    return "00:00";
+  }
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }

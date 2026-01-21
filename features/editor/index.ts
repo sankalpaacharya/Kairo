@@ -5,5 +5,9 @@ export { Timeline } from "./components/timeline";
 export { useVideoPlayer } from "./hooks/use-video-player";
 export { CropModal } from "./components/crop-modal";
 export type { CropArea } from "./components/crop-modal";
+export { TrimHandles } from "./components/trim-handles";
+export { useTrim } from "./hooks/use-trim";
+export type { TrimState, UseTrimReturn } from "./hooks/use-trim";
+
 
 

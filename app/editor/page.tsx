@@ -13,6 +13,7 @@ import {
   useVideoPlayer,
   CropModal,
   ASPECT_RATIOS,
+  useTrim,
 } from "@/features/editor";
 import type { CropArea, AspectRatioOption } from "@/features/editor";
 import { Sidebar, PRESET_GRADIENTS } from "@/features/customization";
@@ -56,6 +57,27 @@ export default function EditorPage() {
   // Aspect ratio state
   const [aspectRatio, setAspectRatio] = useState<AspectRatioOption>("16:9");
 
+  // Recording title state (used for export filename)
+  const [recordingTitle, setRecordingTitle] = useState("Screen Recording");
+
+  // Trim state
+  const {
+    trimStart,
+    trimEnd,
+    trimmedDuration,
+    isTrimmed,
+    setTrimStart,
+    setTrimEnd,
+    resetTrim,
+  } = useTrim(duration);
+
+  // Reset trim when duration changes (new video loaded)
+  useEffect(() => {
+    if (duration > 0) {
+      resetTrim(duration);
+    }
+  }, [duration, resetTrim]);
+
   // Redirect to landing if no recorded blob
   useEffect(() => {
     if (!recordedBlob) {
@@ -68,7 +90,11 @@ export default function EditorPage() {
       const url = URL.createObjectURL(recordedBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `screen-recording-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.webm`;
+      // Use the recording title for the filename, sanitized for file system
+      const sanitizedTitle = recordingTitle
+        .replace(/[^a-zA-Z0-9-_ ]/g, "")
+        .replace(/\s+/g, "-");
+      a.download = `${sanitizedTitle}.webm`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -133,7 +159,8 @@ export default function EditorPage() {
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <HeaderBar
-          title="Screen Recording"
+          title={recordingTitle}
+          onTitleChange={setRecordingTitle}
           onExport={handleExport}
           isExporting={false}
         />
@@ -164,6 +191,62 @@ export default function EditorPage() {
             {/* Webcam Overlay */}
             <WebcamOverlay stream={webcamStream} isActive={webcamActive} />
           </div>
+  // Enforce trim bounds during playback
+  useEffect(() => {
+    if (isPlaying && currentTime >= trimEnd) {
+      pause();
+      if (videoRef.current) {
+        videoRef.current.currentTime = trimStart;
+      }
+    }
+  }, [currentTime, trimEnd, trimStart, isPlaying, pause, videoRef]);
+
+  const handlePlayProxy = () => {
+    if (currentTime >= trimEnd || currentTime < trimStart) {
+      seek(trimStart);
+    }
+    play();
+  };
+
+  const handleSkipBackwardProxy = () => {
+    const newTime = Math.max(trimStart, currentTime - 5);
+    seek(newTime);
+  };
+
+  const handleSkipForwardProxy = () => {
+    const newTime = Math.min(trimEnd, currentTime + 5);
+    seek(newTime);
+  };
+
+  return (
+    <div className="flex h-screen bg-background text-foreground">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <HeaderBar
+          title={recordingTitle}
+          onTitleChange={setRecordingTitle}
+          onExport={handleExport}
+          isExporting={false}
+        />
+
+        {/* Video Preview Area */}
+        <main className="flex-1 flex items-center justify-center p-8 overflow-hidden">
+          <div
+            className="relative w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center"
+            style={{
+              ...getBackgroundStyle(),
+              aspectRatio:
+                aspectRatio === "auto"
+                  ? "auto"
+                  : (ASPECT_RATIOS.find((r) => r.value === aspectRatio)?.ratio?.toString() ?? "auto"),
+            }}
+          >
+            <VideoPreview
+              videoRef={videoRef}
+              cropArea={cropArea}
+            />
+          </div>
         </main>
 
         {/* Bottom Toolbar */}
@@ -172,21 +255,25 @@ export default function EditorPage() {
           currentTime={formattedCurrentTime}
           duration={formattedDuration}
           aspectRatio={aspectRatio}
-          onPlay={play}
+          onPlay={handlePlayProxy}
           onPause={pause}
-          onSkipForward={() => skipForward(5)}
-          onSkipBackward={() => skipBackward(5)}
+          onSkipForward={handleSkipForwardProxy}
+          onSkipBackward={handleSkipBackwardProxy}
           onAspectRatioChange={setAspectRatio}
           onNewRecording={handleNewRecording}
           onCropClick={() => setCropModalOpen(true)}
         />
 
-        {/* Timeline */}
+        {/* Timeline with trim handles */}
         <Timeline
           duration={duration}
           currentTime={currentTime}
           isRecording={false}
           onSeek={seekByPercent}
+          trimStart={trimStart}
+          trimEnd={trimEnd}
+          onTrimStartChange={setTrimStart}
+          onTrimEndChange={setTrimEnd}
         />
       </div>
 

@@ -19,8 +19,6 @@ interface SidebarProps {
 
 const TABS: { id: BackgroundType; label: string }[] = [
   { id: "wallpaper", label: "Wallpaper" },
-  { id: "gradient", label: "Gradient" },
-  { id: "color", label: "Color" },
   { id: "image", label: "Image" },
 ];
 
@@ -72,18 +70,6 @@ export function Sidebar({
             selected={background?.id ?? null}
             onSelect={onBackgroundChange}
           />
-        )}
-
-        {activeTab === "gradient" && (
-          <div className="text-sm text-muted-foreground py-4 text-center">
-            Custom gradients coming soon
-          </div>
-        )}
-
-        {activeTab === "color" && (
-          <div className="text-sm text-muted-foreground py-4 text-center">
-            Solid colors coming soon
-          </div>
         )}
 
         {activeTab === "image" && (
