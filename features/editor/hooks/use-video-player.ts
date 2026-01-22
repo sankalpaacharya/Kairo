@@ -19,7 +19,6 @@ interface UseVideoPlayerReturn {
 }
 
 function formatTime(seconds: number): string {
-  // Handle invalid values
   if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) {
     return "00:00";
   }
@@ -28,7 +27,7 @@ function formatTime(seconds: number): string {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function useVideoPlayer(): UseVideoPlayerReturn {
+export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -36,12 +35,20 @@ export function useVideoPlayer(): UseVideoPlayerReturn {
   const [duration, setDuration] = useState(0);
 
   // Use requestAnimationFrame for smooth 60fps updates
+  const loopRef = useRef<() => void>(undefined);
+
   const updateTime = useCallback(() => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
     }
-    animationFrameRef.current = requestAnimationFrame(updateTime);
+    if (loopRef.current) {
+      animationFrameRef.current = requestAnimationFrame(loopRef.current);
+    }
   }, []);
+
+  useEffect(() => {
+    loopRef.current = updateTime;
+  }, [updateTime]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -56,7 +63,9 @@ export function useVideoPlayer(): UseVideoPlayerReturn {
     const handlePlay = () => {
       setIsPlaying(true);
       // Start animation loop on play
-      animationFrameRef.current = requestAnimationFrame(updateTime);
+      if (loopRef.current) {
+        animationFrameRef.current = requestAnimationFrame(loopRef.current);
+      }
     };
     const handlePause = () => {
       setIsPlaying(false);
@@ -111,10 +120,14 @@ export function useVideoPlayer(): UseVideoPlayerReturn {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [updateTime]);
+  }, [updateTime, videoSrc]);
 
   const play = useCallback(() => {
-    videoRef.current?.play();
+    if (videoRef.current) {
+      videoRef.current.play().catch((err) => {
+        console.error("Error playing video:", err);
+      });
+    }
   }, []);
 
   const pause = useCallback(() => {

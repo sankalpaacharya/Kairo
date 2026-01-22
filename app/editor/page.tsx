@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useWebcam } from "@/features/recorder";
 import { useRecordingContext } from "@/features/recorder/context";
@@ -23,6 +23,23 @@ export default function EditorPage() {
   const { recordedBlob, setRecordedBlob } = useRecordingContext();
   const { stream: webcamStream, isActive: webcamActive } = useWebcam();
 
+  // Create a stable video URL from the blob
+  const videoUrl = useMemo(() => {
+    if (recordedBlob) {
+      return URL.createObjectURL(recordedBlob);
+    }
+    return null;
+  }, [recordedBlob]);
+
+  // Clean up the object URL when component unmounts or blob changes
+  useEffect(() => {
+    return () => {
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
+      }
+    };
+  }, [videoUrl]);
+
   const {
     videoRef,
     isPlaying,
@@ -37,7 +54,7 @@ export default function EditorPage() {
     seekByPercent,
     skipForward,
     skipBackward,
-  } = useVideoPlayer();
+  } = useVideoPlayer(videoUrl);
 
   // Background customization state
   const [background, setBackground] = useState<{
@@ -146,8 +163,9 @@ export default function EditorPage() {
   };
 
   // Enforce trim bounds during playback
+  // Only trigger when trimEnd > 0 (meaning duration has loaded and trim is set)
   useEffect(() => {
-    if (isPlaying && currentTime >= trimEnd) {
+    if (isPlaying && trimEnd > 0 && currentTime >= trimEnd) {
       pause();
       if (videoRef.current) {
         videoRef.current.currentTime = trimStart;
@@ -159,8 +177,13 @@ export default function EditorPage() {
   const handlePlayProxy = () => {
     if (currentTime >= trimEnd || currentTime < trimStart) {
       seek(trimStart);
+      // Wait for seek to complete before playing to avoid race condition
+      setTimeout(() => {
+        play();
+      }, 50);
+    } else {
+      play();
     }
-    play();
   };
 
   const handleSkipBackwardProxy = () => {
@@ -209,7 +232,7 @@ export default function EditorPage() {
           >
             {/* Video Preview */}
             <VideoPreview
-              recordedBlob={recordedBlob}
+              videoUrl={videoUrl}
               isRecording={false}
               videoRef={videoRef}
               className="shadow-lg"

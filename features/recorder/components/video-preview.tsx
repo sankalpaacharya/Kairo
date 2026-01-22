@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, type RefObject } from "react";
+import { type RefObject } from "react";
 
 export interface CropArea {
   x: number;
@@ -10,7 +10,7 @@ export interface CropArea {
 }
 
 interface VideoPreviewProps {
-  recordedBlob: Blob | null;
+  videoUrl: string | null;
   isRecording: boolean;
   videoRef?: RefObject<HTMLVideoElement | null>;
   className?: string;
@@ -18,27 +18,12 @@ interface VideoPreviewProps {
 }
 
 export function VideoPreview({
-  recordedBlob,
+  videoUrl,
   isRecording,
   videoRef,
   className = "",
   cropArea,
 }: VideoPreviewProps) {
-  const videoUrl = useMemo(() => {
-    if (recordedBlob) {
-      return URL.createObjectURL(recordedBlob);
-    }
-    return null;
-  }, [recordedBlob]);
-
-  useEffect(() => {
-    return () => {
-      if (videoUrl) {
-        URL.revokeObjectURL(videoUrl);
-      }
-    };
-  }, [videoUrl]);
-
   // Calculate crop styles using CSS clip-path
   const getCropStyles = (): React.CSSProperties => {
     if (
@@ -62,7 +47,7 @@ export function VideoPreview({
     };
   };
 
-  if (!recordedBlob && !isRecording) {
+  if (!videoUrl && !isRecording) {
     return (
       <div
         className={`flex items-center justify-center bg-muted/50 rounded-2xl aspect-video ${className}`}
@@ -101,6 +86,8 @@ export function VideoPreview({
         src={videoUrl ?? undefined}
         className="w-full aspect-video bg-black"
         style={getCropStyles()}
+        playsInline
+        preload="auto"
       />
     </div>
   );
