@@ -28,7 +28,6 @@ export function VideoPreview({
 }: VideoPreviewProps) {
   const [codecSupport, setCodecSupport] = useState<string>('');
 
-  // Check codec support
   useEffect(() => {
     if (videoMimeType && videoRef?.current) {
       const support = videoRef.current.canPlayType(videoMimeType);
@@ -43,7 +42,6 @@ export function VideoPreview({
     }
   }, [videoMimeType, videoRef]);
 
-  // Calculate crop styles using CSS clip-path
   const getCropStyles = (): React.CSSProperties => {
     if (
       !cropArea ||
@@ -65,7 +63,6 @@ export function VideoPreview({
     };
   };
 
-  // Explicitly trigger video loading when videoUrl changes
   useEffect(() => {
     if (videoRef?.current && videoUrl) {
       console.log('VideoPreview: Loading video', {
@@ -75,7 +72,6 @@ export function VideoPreview({
         urlLength: videoUrl.length
       });
 
-      // Ensure src is set before loading
       videoRef.current.src = videoUrl;
       videoRef.current.load();
     }
@@ -123,7 +119,6 @@ export function VideoPreview({
         preload="metadata"
         crossOrigin="anonymous"
       >
-        {/* Use source element for better control */}
         {videoUrl && (
           <source
             src={videoUrl}
