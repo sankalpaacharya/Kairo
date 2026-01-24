@@ -11,6 +11,7 @@ import {
   BottomToolbar,
   Timeline,
   useVideoPlayer,
+  useVideoExport,
   CropModal,
   ASPECT_RATIOS,
   useTrim,
@@ -29,7 +30,6 @@ export default function EditorPage() {
     setBlobError(null);
 
     if (!recordedBlob) {
-      console.log('No recordedBlob available');
       return null;
     }
 
@@ -46,12 +46,6 @@ export default function EditorPage() {
       return null;
     }
 
-    console.log('Creating blob URL:', {
-      size: recordedBlob.size,
-      type: recordedBlob.type,
-      mimeType: recordedMimeType
-    });
-
     try {
       // Create blob with explicit MIME type
       const blob = new Blob([recordedBlob], {
@@ -59,9 +53,6 @@ export default function EditorPage() {
       });
 
       const url = URL.createObjectURL(blob);
-      console.log('Successfully created blob URL:', url);
-
-      // Store URL for later cleanup
       return url;
     } catch (error) {
       console.error('Error creating blob URL:', error);
@@ -81,7 +72,7 @@ export default function EditorPage() {
       }
       previousUrl = videoUrl;
     };
-  }, [recordedBlob]); // Only when blob changes, not videoUrl
+  }, [recordedBlob]);
 
   const {
     videoRef,
@@ -99,6 +90,8 @@ export default function EditorPage() {
     skipForward,
     skipBackward,
   } = useVideoPlayer(videoUrl);
+
+  const { isExporting, exportProgress, exportVideo } = useVideoExport();
 
   // Background customization state
   const [background, setBackground] = useState<{
@@ -147,22 +140,21 @@ export default function EditorPage() {
     }
   }, [recordedBlob, router]);
 
-  const handleExport = () => {
-    if (recordedBlob) {
-      const url = URL.createObjectURL(recordedBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      const sanitizedTitle = recordingTitle
-        .replace(/[^a-zA-Z0-9-_ ]/g, "")
-        .replace(/\s+/g, "-");
+  const handleExport = async () => {
+    if (videoRef.current) {
+      // Pause playback before starting export
+      pause();
 
-      const extension = recordedMimeType?.includes('mp4') ? 'mp4' : 'webm';
-      a.download = `${sanitizedTitle}.${extension}`;
-
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await exportVideo(videoRef.current, {
+        background,
+        backgroundImage,
+        padding,
+        cropArea,
+        trimStart: trimStart,
+        trimEnd: trimEnd > 0 ? trimEnd : duration,
+        aspectRatio,
+        fileName: recordingTitle, // Added fileName
+      });
     }
   };
 
@@ -249,7 +241,29 @@ export default function EditorPage() {
   const displayError = blobError || error;
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
+    <div className="flex h-screen bg-background text-foreground relative">
+      {/* Export Overlay */}
+      {isExporting && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 rounded-xl bg-card p-8 shadow-2xl border">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <div className="text-center">
+              <h3 className="font-semibold text-lg">Exporting Video...</h3>
+              <p className="text-sm text-muted-foreground max-w-[200px]">
+                Please keep this tab open. This happens in real-time.
+              </p>
+            </div>
+            <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${exportProgress}%` }}
+              />
+            </div>
+            <p className="text-sm font-medium">{exportProgress}%</p>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
@@ -257,7 +271,7 @@ export default function EditorPage() {
           title={recordingTitle}
           onTitleChange={setRecordingTitle}
           onExport={handleExport}
-          isExporting={false}
+          isExporting={isExporting}
         />
 
         {/* Video Preview Area */}
