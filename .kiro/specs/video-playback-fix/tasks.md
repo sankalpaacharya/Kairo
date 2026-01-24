@@ -34,14 +34,14 @@ This implementation plan fixes the video playback issue by explicitly triggering
     - Test unknown codes return default message
     - _Requirements: 4.1_
 
-  - [-] 2.4 Add error event listener to video element
+  - [x] 2.4 Add error event listener to video element
     - Create handleError function that captures video.error
     - Call getErrorMessage with error code
     - Set error state and log to console
     - Add event listener in useEffect
     - _Requirements: 4.1, 4.3_
 
-  - [~] 2.5 Add loadstart event listener
+  - [-] 2.5 Add loadstart event listener
     - Create handleLoadStart function that sets isLoading to true and clears error
     - Add event listener in useEffect
     - _Requirements: 1.2_
