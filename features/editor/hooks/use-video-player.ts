@@ -9,6 +9,8 @@ interface UseVideoPlayerReturn {
   duration: number;
   formattedCurrentTime: string;
   formattedDuration: string;
+  error: string | null;
+  isLoading: boolean;
   play: () => void;
   pause: () => void;
   toggle: () => void;
@@ -27,12 +29,29 @@ function formatTime(seconds: number): string {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
+function getErrorMessage(code: number): string {
+  switch (code) {
+    case 1:
+      return "MEDIA_ERR_ABORTED - Video loading aborted";
+    case 2:
+      return "MEDIA_ERR_NETWORK - Network error while loading video";
+    case 3:
+      return "MEDIA_ERR_DECODE - Video decoding failed";
+    case 4:
+      return "MEDIA_ERR_SRC_NOT_SUPPORTED - Video format not supported";
+    default:
+      return "Unknown error";
+  }
+}
+
 export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Use requestAnimationFrame for smooth 60fps updates
   const loopRef = useRef<() => void>(undefined);
@@ -94,6 +113,13 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
       }
       setCurrentTime(video.currentTime);
     };
+    const handleError = () => {
+      if (video.error) {
+        const errorMessage = `Video error: ${video.error.code} - ${getErrorMessage(video.error.code)}`;
+        setError(errorMessage);
+        console.error(errorMessage);
+      }
+    };
 
     video.addEventListener("durationchange", handleDurationChange);
     video.addEventListener("loadedmetadata", handleDurationChange);
@@ -102,6 +128,7 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
     video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
     video.addEventListener("seeked", handleSeeked);
+    video.addEventListener("error", handleError);
 
     // Check if duration is already available
     if (video.duration && isFinite(video.duration)) {
@@ -116,6 +143,7 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
       video.removeEventListener("seeked", handleSeeked);
+      video.removeEventListener("error", handleError);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -188,6 +216,8 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
     duration,
     formattedCurrentTime: formatTime(currentTime),
     formattedDuration: formatTime(duration),
+    error,
+    isLoading,
     play,
     pause,
     toggle,

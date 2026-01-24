@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject } from "react";
+import { type RefObject, useEffect } from "react";
 
 export interface CropArea {
   x: number;
@@ -46,6 +46,13 @@ export function VideoPreview({
       clipPath: `inset(${top}% ${right}% ${bottom}% ${left}%)`,
     };
   };
+
+  // Explicitly trigger video loading when videoUrl changes
+  useEffect(() => {
+    if (videoRef?.current && videoUrl) {
+      videoRef.current.load();
+    }
+  }, [videoUrl, videoRef]);
 
   if (!videoUrl && !isRecording) {
     return (
