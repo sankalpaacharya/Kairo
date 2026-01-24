@@ -62,20 +62,29 @@ export function TrimHandles({
   const endPercent = duration > 0 ? (trimEnd / duration) * 100 : 100;
 
   return (
-    <div ref={containerRef} className="absolute inset-0 pointer-events-none">
+    <div ref={containerRef} className="absolute inset-0 pointer-events-none z-30">
       {/* Trimmed out regions (darkened) */}
       <div
-        className="absolute top-0 bottom-0 left-0 bg-black/50 z-30"
+        className="absolute top-0 bottom-0 left-0 bg-black/50 z-10"
         style={{ width: `${startPercent}%` }}
       />
       <div
-        className="absolute top-0 bottom-0 right-0 bg-black/50 z-30"
+        className="absolute top-0 bottom-0 right-0 bg-black/50 z-10"
         style={{ width: `${100 - endPercent}%` }}
+      />
+
+      {/* Active trim region border */}
+      <div
+        className="absolute top-0 bottom-0 border-t-2 border-b-2 border-amber-500/50 z-20"
+        style={{
+          left: `${startPercent}%`,
+          width: `${endPercent - startPercent}%`,
+        }}
       />
 
       {/* Left trim handle */}
       <div
-        className="absolute top-0 bottom-0 z-40 pointer-events-auto cursor-ew-resize group"
+        className="absolute top-0 bottom-0 z-50 pointer-events-auto cursor-ew-resize group"
         style={{ left: `${startPercent}%`, transform: "translateX(-50%)" }}
         onMouseDown={(e) => handleMouseDown(e, "start")}
       >
@@ -102,7 +111,7 @@ export function TrimHandles({
 
       {/* Right trim handle */}
       <div
-        className="absolute top-0 bottom-0 z-40 pointer-events-auto cursor-ew-resize group"
+        className="absolute top-0 bottom-0 z-50 pointer-events-auto cursor-ew-resize group"
         style={{ left: `${endPercent}%`, transform: "translateX(-50%)" }}
         onMouseDown={(e) => handleMouseDown(e, "end")}
       >
@@ -126,15 +135,6 @@ export function TrimHandles({
           </div>
         </div>
       </div>
-
-      {/* Active trim region border */}
-      <div
-        className="absolute top-0 bottom-0 border-t-2 border-b-2 border-amber-500/50 z-25"
-        style={{
-          left: `${startPercent}%`,
-          width: `${endPercent - startPercent}%`,
-        }}
-      />
     </div>
   );
 }

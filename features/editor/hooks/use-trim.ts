@@ -20,7 +20,7 @@ export interface UseTrimReturn {
 
 export function useTrim(initialDuration: number = 0): UseTrimReturn {
   const [trimStart, setTrimStartState] = useState(0);
-  const [trimEnd, setTrimEndState] = useState(initialDuration);
+  const [trimEnd, setTrimEndState] = useState(initialDuration || 0);
 
   const setTrimStart = useCallback(
     (time: number) => {

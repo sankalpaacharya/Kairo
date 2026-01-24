@@ -20,25 +20,68 @@ import { Sidebar, PRESET_GRADIENTS } from "@/features/customization";
 
 export default function EditorPage() {
   const router = useRouter();
-  const { recordedBlob, setRecordedBlob } = useRecordingContext();
+  const { recordedBlob, recordedMimeType, setRecordedBlob } = useRecordingContext();
   const { stream: webcamStream, isActive: webcamActive } = useWebcam();
+  const [blobError, setBlobError] = useState<string | null>(null);
 
   // Create a stable video URL from the blob
   const videoUrl = useMemo(() => {
-    if (recordedBlob) {
-      return URL.createObjectURL(recordedBlob);
-    }
-    return null;
-  }, [recordedBlob]);
+    setBlobError(null);
 
-  // Clean up the object URL when component unmounts or blob changes
+    if (!recordedBlob) {
+      console.log('No recordedBlob available');
+      return null;
+    }
+
+    // Validate blob
+    if (!(recordedBlob instanceof Blob)) {
+      console.error('recordedBlob is not a Blob instance:', typeof recordedBlob);
+      setBlobError('Invalid recording data');
+      return null;
+    }
+
+    if (recordedBlob.size === 0) {
+      console.error('recordedBlob is empty (0 bytes)');
+      setBlobError('Recording is empty');
+      return null;
+    }
+
+    console.log('Creating blob URL:', {
+      size: recordedBlob.size,
+      type: recordedBlob.type,
+      mimeType: recordedMimeType
+    });
+
+    try {
+      // Create blob with explicit MIME type
+      const blob = new Blob([recordedBlob], {
+        type: recordedMimeType || 'video/webm'
+      });
+
+      const url = URL.createObjectURL(blob);
+      console.log('Successfully created blob URL:', url);
+
+      // Store URL for later cleanup
+      return url;
+    } catch (error) {
+      console.error('Error creating blob URL:', error);
+      setBlobError('Failed to create video URL');
+      return null;
+    }
+  }, [recordedBlob, recordedMimeType]);
+
+  // Cleanup old blob URLs when recordedBlob changes
   useEffect(() => {
+    let previousUrl: string | null = null;
+
     return () => {
-      if (videoUrl) {
-        URL.revokeObjectURL(videoUrl);
+      // Revoke previous URL when blob changes
+      if (previousUrl && previousUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previousUrl);
       }
+      previousUrl = videoUrl;
     };
-  }, [videoUrl]);
+  }, [recordedBlob]); // Only when blob changes, not videoUrl
 
   const {
     videoRef,
@@ -112,7 +155,10 @@ export default function EditorPage() {
       const sanitizedTitle = recordingTitle
         .replace(/[^a-zA-Z0-9-_ ]/g, "")
         .replace(/\s+/g, "-");
-      a.download = `${sanitizedTitle}.webm`;
+
+      const extension = recordedMimeType?.includes('mp4') ? 'mp4' : 'webm';
+      a.download = `${sanitizedTitle}.${extension}`;
+
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -121,6 +167,9 @@ export default function EditorPage() {
   };
 
   const handleNewRecording = () => {
+    if (videoUrl && videoUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(videoUrl);
+    }
     setRecordedBlob(null);
     router.push("/");
   };
@@ -131,22 +180,13 @@ export default function EditorPage() {
   };
 
   const handleImageChange = (path: string) => {
-    console.log("handleImageChange called with:", path);
     setBackgroundImage(path);
     setBackground(null);
   };
 
   const getBackgroundStyle = () => {
-    console.log(
-      "getBackgroundStyle - backgroundImage:",
-      backgroundImage,
-      "background:",
-      background,
-    );
     if (backgroundImage) {
-      // Encode the URL to handle spaces and special characters
       const encodedUrl = encodeURI(backgroundImage);
-      console.log("Using image background:", encodedUrl);
       return {
         backgroundImage: `url("${encodedUrl}")`,
         backgroundSize: "cover",
@@ -164,21 +204,21 @@ export default function EditorPage() {
   };
 
   // Enforce trim bounds during playback
-  // Only trigger when trimEnd > 0 (meaning duration has loaded and trim is set)
   useEffect(() => {
-    if (isPlaying && trimEnd > 0 && currentTime >= trimEnd) {
+    if (isPlaying && duration > 0 && trimEnd > 0 && trimEnd < duration && currentTime >= trimEnd) {
       pause();
       if (videoRef.current) {
         videoRef.current.currentTime = trimStart;
       }
     }
-  }, [currentTime, trimEnd, trimStart, isPlaying, pause, videoRef]);
+  }, [currentTime, trimEnd, trimStart, isPlaying, pause, videoRef, duration]);
 
   // Trim-aware playback handlers
   const handlePlayProxy = () => {
-    if (currentTime >= trimEnd || currentTime < trimStart) {
+    const isTrimmed = trimStart > 0 || (trimEnd > 0 && trimEnd < duration);
+
+    if (isTrimmed && (currentTime >= trimEnd || currentTime < trimStart)) {
       seek(trimStart);
-      // Wait for seek to complete before playing to avoid race condition
       setTimeout(() => {
         play();
       }, 50);
@@ -205,6 +245,9 @@ export default function EditorPage() {
     );
   }
 
+  // Show error if blob URL creation failed
+  const displayError = blobError || error;
+
   return (
     <div className="flex h-screen bg-background text-foreground">
       {/* Main Content Area */}
@@ -227,25 +270,41 @@ export default function EditorPage() {
                 aspectRatio === "auto"
                   ? "auto"
                   : (ASPECT_RATIOS.find(
-                      (r) => r.value === aspectRatio,
-                    )?.ratio?.toString() ?? "auto"),
+                    (r) => r.value === aspectRatio,
+                  )?.ratio?.toString() ?? "auto"),
             }}
           >
             {/* Video Preview */}
-            <VideoPreview
-              videoUrl={videoUrl}
-              isRecording={false}
-              videoRef={videoRef}
-              className="shadow-lg"
-              cropArea={cropArea}
-            />
+            {videoUrl && !displayError && (
+              <VideoPreview
+                videoUrl={videoUrl}
+                videoMimeType={recordedMimeType}
+                isRecording={false}
+                videoRef={videoRef}
+                className="shadow-lg"
+                cropArea={cropArea}
+              />
+            )}
 
             {/* Error Overlay */}
-            {error && (
+            {displayError && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-lg">
                 <div className="text-center text-white p-6 max-w-md">
                   <p className="font-medium text-lg mb-2">Failed to load video</p>
-                  <p className="text-sm text-gray-300">{error}</p>
+                  <p className="text-sm text-gray-300 mb-4">{displayError}</p>
+                  <div className="text-xs text-gray-400 mb-4 text-left bg-gray-900 p-3 rounded">
+                    <p>Debug info:</p>
+                    <p>• Blob size: {recordedBlob?.size || 0} bytes</p>
+                    <p>• Blob type: {recordedBlob?.type || 'unknown'}</p>
+                    <p>• MIME type: {recordedMimeType || 'not set'}</p>
+                    <p>• Video URL: {videoUrl ? 'created' : 'failed'}</p>
+                  </div>
+                  <button
+                    onClick={handleNewRecording}
+                    className="mt-4 px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition"
+                  >
+                    Try New Recording
+                  </button>
                 </div>
               </div>
             )}

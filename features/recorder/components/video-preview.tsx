@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, useEffect } from "react";
+import { type RefObject, useEffect, useState } from "react";
 
 export interface CropArea {
   x: number;
@@ -11,6 +11,7 @@ export interface CropArea {
 
 interface VideoPreviewProps {
   videoUrl: string | null;
+  videoMimeType?: string | null;
   isRecording: boolean;
   videoRef?: RefObject<HTMLVideoElement | null>;
   className?: string;
@@ -19,11 +20,29 @@ interface VideoPreviewProps {
 
 export function VideoPreview({
   videoUrl,
+  videoMimeType,
   isRecording,
   videoRef,
   className = "",
   cropArea,
 }: VideoPreviewProps) {
+  const [codecSupport, setCodecSupport] = useState<string>('');
+
+  // Check codec support
+  useEffect(() => {
+    if (videoMimeType && videoRef?.current) {
+      const support = videoRef.current.canPlayType(videoMimeType);
+      setCodecSupport(support);
+      console.log('Codec support check:', {
+        mimeType: videoMimeType,
+        support: support,
+        supportMeaning: support === 'probably' ? 'Fully supported' :
+          support === 'maybe' ? 'Might work' :
+            'Not supported'
+      });
+    }
+  }, [videoMimeType, videoRef]);
+
   // Calculate crop styles using CSS clip-path
   const getCropStyles = (): React.CSSProperties => {
     if (
@@ -36,7 +55,6 @@ export function VideoPreview({
       return {};
     }
 
-    // Use inset clip-path: inset(top right bottom left)
     const top = cropArea.y;
     const left = cropArea.x;
     const bottom = 100 - (cropArea.y + cropArea.height);
@@ -50,9 +68,18 @@ export function VideoPreview({
   // Explicitly trigger video loading when videoUrl changes
   useEffect(() => {
     if (videoRef?.current && videoUrl) {
+      console.log('VideoPreview: Loading video', {
+        videoUrl,
+        videoMimeType,
+        urlType: videoUrl.startsWith('blob:') ? 'blob URL' : 'other',
+        urlLength: videoUrl.length
+      });
+
+      // Ensure src is set before loading
+      videoRef.current.src = videoUrl;
       videoRef.current.load();
     }
-  }, [videoUrl, videoRef]);
+  }, [videoUrl, videoMimeType, videoRef]);
 
   if (!videoUrl && !isRecording) {
     return (
@@ -90,12 +117,21 @@ export function VideoPreview({
     <div className={`relative overflow-hidden rounded-2xl ${className}`}>
       <video
         ref={videoRef}
-        src={videoUrl ?? undefined}
         className="w-full aspect-video bg-black"
         style={getCropStyles()}
         playsInline
         preload="metadata"
-      />
+        crossOrigin="anonymous"
+      >
+        {/* Use source element for better control */}
+        {videoUrl && (
+          <source
+            src={videoUrl}
+            type={videoMimeType || 'video/webm'}
+          />
+        )}
+        Your browser does not support the video tag.
+      </video>
     </div>
   );
 }

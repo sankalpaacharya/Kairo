@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -14,45 +15,16 @@ import { useRecordingContext } from "@/features/recorder/context";
 export default function LandingPage() {
   const router = useRouter();
   const { setRecordedBlob } = useRecordingContext();
-  const { startRecording } = useMediaRecorder();
+  const { startRecording, recordingState, recordedBlob } = useMediaRecorder();
 
-  const handleShareScreen = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { displaySurface: "monitor" },
-        audio: true,
-      });
-
-      const chunks: Blob[] = [];
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "video/webm;codecs=vp9",
-      });
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "video/webm" });
-        setRecordedBlob(blob);
-        stream.getTracks().forEach((track) => track.stop());
-        router.push("/editor");
-      };
-
-      // Handle when user stops sharing via browser UI
-      stream.getVideoTracks()[0].onended = () => {
-        if (mediaRecorder.state !== "inactive") {
-          mediaRecorder.stop();
-        }
-      };
-
-      mediaRecorder.start(100);
-    } catch (err) {
-      console.error("Error starting recording:", err);
+  // Watch for recording completion
+  useEffect(() => {
+    if (recordingState === "stopped" && recordedBlob) {
+      console.log("Recording stopped, saving blob:", recordedBlob);
+      setRecordedBlob(recordedBlob, recordedBlob.type);
+      router.push("/editor");
     }
-  };
+  }, [recordingState, recordedBlob, router, setRecordedBlob]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
@@ -83,7 +55,7 @@ export default function LandingPage() {
             <HugeiconsIcon icon={PlayCircleIcon} strokeWidth={2} />
             Try Demo
           </Button>
-          <Button size="lg" className="gap-2" onClick={handleShareScreen}>
+          <Button size="lg" className="gap-2" onClick={() => startRecording()}>
             <HugeiconsIcon icon={RecordIcon} strokeWidth={2} />
             Share Screen
           </Button>

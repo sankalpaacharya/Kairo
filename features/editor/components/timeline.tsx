@@ -109,13 +109,13 @@ export function Timeline({
         {/* Playhead indicator - show when duration > 0 */}
         {!isRecording && duration > 0 && (
           <div
-            className="absolute top-0 bottom-0 w-1 bg-primary z-50 rounded-full shadow-lg"
+            className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-[100] shadow-lg pointer-events-none"
             style={{
               left: `${progressPercent}%`,
               transform: "translateX(-50%)",
             }}
           >
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary rounded-full border-2 border-background" />
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-lg" />
           </div>
         )}
       </div>

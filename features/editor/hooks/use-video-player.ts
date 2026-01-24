@@ -29,18 +29,19 @@ export function formatTime(seconds: number): string {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
-function getErrorMessage(code: number): string {
+function getErrorMessage(code: number, src?: string): string {
   switch (code) {
     case 1:
-      return "MEDIA_ERR_ABORTED - Video loading aborted";
+      return "Video loading was aborted";
     case 2:
-      return "MEDIA_ERR_NETWORK - Network error while loading video";
+      return "Network error while loading video. Check your connection.";
     case 3:
-      return "MEDIA_ERR_DECODE - Video decoding failed";
+      return "Video decoding failed. The file may be corrupted.";
     case 4:
-      return "MEDIA_ERR_SRC_NOT_SUPPORTED - Video format not supported";
+      const fileName = src ? src.split('/').pop() : 'file';
+      return `Video format not supported. ${fileName} cannot be played. Please use MP4 format.`;
     default:
-      return "Unknown error";
+      return "Unknown video error occurred";
   }
 }
 
@@ -53,7 +54,6 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Use requestAnimationFrame for smooth 60fps updates
   const loopRef = useRef<() => void>(undefined);
 
   const updateTime = useCallback(() => {
@@ -74,6 +74,7 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
     setCurrentTime(0);
     setDuration(0);
     setError(null);
+    setIsLoading(!!videoSrc);
   }, [videoSrc]);
 
   useEffect(() => {
@@ -86,23 +87,23 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
         setDuration(dur);
       }
     };
+
     const handlePlay = () => {
       setIsPlaying(true);
-      // Start animation loop on play
       if (loopRef.current) {
         animationFrameRef.current = requestAnimationFrame(loopRef.current);
       }
     };
+
     const handlePause = () => {
       setIsPlaying(false);
-      // Stop animation loop on pause
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
-      // Update final time
       setCurrentTime(video.currentTime);
     };
+
     const handleEnded = () => {
       setIsPlaying(false);
       if (animationFrameRef.current) {
@@ -110,9 +111,11 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
         animationFrameRef.current = null;
       }
     };
+
     const handleSeeked = () => {
       setCurrentTime(video.currentTime);
     };
+
     const handleLoadedData = () => {
       setIsLoading(false);
       const dur = video.duration;
@@ -121,13 +124,27 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
       }
       setCurrentTime(video.currentTime);
     };
+
     const handleError = () => {
       if (video.error) {
-        const errorMessage = `Video error: ${video.error.code} - ${getErrorMessage(video.error.code)}`;
+        const errorMessage = getErrorMessage(video.error.code, videoSrc || undefined);
         setError(errorMessage);
-        console.error(errorMessage);
+        setIsLoading(false);
+
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Video playback error:', {
+            code: video.error.code,
+            message: video.error.message,
+            src: videoSrc,
+            suggestedFix: video.error.code === 4
+              ? 'Convert video to MP4 (H.264) format or ensure you are creating a blob URL for uploaded files using URL.createObjectURL(file)'
+              : 'Check console for details'
+          });
+        }
       }
     };
+
     const handleLoadStart = () => {
       setIsLoading(true);
       setError(null);
@@ -143,7 +160,6 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
     video.addEventListener("error", handleError);
     video.addEventListener("loadstart", handleLoadStart);
 
-    // Check if duration is already available
     if (video.duration && isFinite(video.duration)) {
       setDuration(video.duration);
     }
@@ -167,7 +183,10 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
   const play = useCallback(() => {
     if (videoRef.current) {
       videoRef.current.play().catch((err) => {
-        console.error("Error playing video:", err);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn("Error playing video:", err);
+        }
+        setError(`Playback failed: ${err.message}`);
       });
     }
   }, []);
@@ -241,4 +260,3 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
     skipBackward,
   };
 }
-
