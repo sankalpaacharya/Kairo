@@ -94,7 +94,7 @@ export function VideoPreview({
         className="w-full aspect-video bg-black"
         style={getCropStyles()}
         playsInline
-        preload="auto"
+        preload="metadata"
       />
     </div>
   );

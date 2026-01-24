@@ -47,6 +47,7 @@ export default function EditorPage() {
     duration,
     formattedCurrentTime,
     formattedDuration,
+    error,
     play,
     pause,
     toggle,
@@ -238,6 +239,16 @@ export default function EditorPage() {
               className="shadow-lg"
               cropArea={cropArea}
             />
+
+            {/* Error Overlay */}
+            {error && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-lg">
+                <div className="text-center text-white p-6 max-w-md">
+                  <p className="font-medium text-lg mb-2">Failed to load video</p>
+                  <p className="text-sm text-gray-300">{error}</p>
+                </div>
+              </div>
+            )}
 
             {/* Webcam Overlay */}
             <WebcamOverlay stream={webcamStream} isActive={webcamActive} />

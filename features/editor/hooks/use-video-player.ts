@@ -20,7 +20,7 @@ interface UseVideoPlayerReturn {
   skipBackward: (seconds?: number) => void;
 }
 
-function formatTime(seconds: number): string {
+export function formatTime(seconds: number): string {
   if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) {
     return "00:00";
   }
@@ -69,6 +69,13 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
     loopRef.current = updateTime;
   }, [updateTime]);
 
+  // Reset state when video source changes
+  useEffect(() => {
+    setCurrentTime(0);
+    setDuration(0);
+    setError(null);
+  }, [videoSrc]);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -107,6 +114,7 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
       setCurrentTime(video.currentTime);
     };
     const handleLoadedData = () => {
+      setIsLoading(false);
       const dur = video.duration;
       if (isFinite(dur) && !isNaN(dur) && dur > 0) {
         setDuration(dur);
@@ -120,6 +128,10 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
         console.error(errorMessage);
       }
     };
+    const handleLoadStart = () => {
+      setIsLoading(true);
+      setError(null);
+    };
 
     video.addEventListener("durationchange", handleDurationChange);
     video.addEventListener("loadedmetadata", handleDurationChange);
@@ -129,6 +141,7 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
     video.addEventListener("ended", handleEnded);
     video.addEventListener("seeked", handleSeeked);
     video.addEventListener("error", handleError);
+    video.addEventListener("loadstart", handleLoadStart);
 
     // Check if duration is already available
     if (video.duration && isFinite(video.duration)) {
@@ -144,6 +157,7 @@ export function useVideoPlayer(videoSrc?: string | null): UseVideoPlayerReturn {
       video.removeEventListener("ended", handleEnded);
       video.removeEventListener("seeked", handleSeeked);
       video.removeEventListener("error", handleError);
+      video.removeEventListener("loadstart", handleLoadStart);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
